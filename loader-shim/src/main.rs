@@ -3,32 +3,8 @@
 // Disable rust main function
 #![no_main]
 #![feature(lang_items)]
-#![feature(bindings_after_at)]
-#![feature(llvm_asm)]
-// Use `link_args` attribute to customize linking.
-#![feature(link_args)]
 
 #[allow(unused_attributes)]
-// Only static links are used and prevent linking with the shared libraries.
-#[link_args = "-no-pie"]
-#[link_args = "-static"]
-// Disable system startup files or libraries when linking. This means
-// that the linker will not include files like `crt0.o` and some of the
-// system standard libraries.
-// See https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-//
-// The `-nostdlib` flag is much like a combination of `-nostartfiles` and
-// `-nodefaultlibs`.
-//
-// Since `_start` is defined in the system startup files, with this option
-// we can use our own `_start` function to override the program entry point.
-#[link_args = "-nostdlib"]
-#[link_args = "-ffreestanding"]
-#[cfg_attr(target_arch = "x86", link_args = "-mregparm=3")]
-#[cfg_attr(target_arch = "x86", link_args = "-Wl,-Ttext=0xa0000000")]
-#[cfg_attr(target_arch = "x86_64", link_args = "-Wl,-Ttext=0x600000000000")]
-#[cfg_attr(target_arch = "arm", link_args = "-Wl,-Ttext=0x10000000")]
-#[cfg_attr(target_arch = "aarch64", link_args = "-Wl,-Ttext=0x2000000000")]
 extern "C" {}
 
 // The compiler may emit a call to the `memset()` function even if there is
@@ -45,6 +21,7 @@ extern crate rlibc;
 
 mod script;
 
+use core::arch::asm;
 use core::{fmt::Write, panic::PanicInfo};
 
 use crate::script::*;
@@ -76,71 +53,67 @@ const AT_EXECFN: usize = 31;
 
 const PR_SET_NAME: usize = 15;
 
+// FIXME: Check other platforms...
 macro_rules! branch {
     ($stack_pointer:expr, $entry_point:expr) => {
         #[cfg(target_arch = "x86_64")]
-        llvm_asm!("
+        asm!(
             // Restore initial stack pointer.
-            movq $0, %rsp
+            "mov rsp, {stack_pointer}",
             // Clear state flags.
-            pushq $$0
-            popfq
+            "push 0",
+            "popfq",
             // Clear rtld_fini.
-            movq $$0, %rdx
+            "mov rdx, 0",
             // Start the program.
-            jmpq *%rax
-        "
-        : /* no output */
-        : "irm" ($stack_pointer), "{ax}" ($entry_point)
-        : "memory", "cc", "rsp", "rdx"
-        : "volatile"
+            "jmp rax",
+            /* no output */
+            stack_pointer = in(reg) $stack_pointer,
+            in("rax") $entry_point,
+            options(noreturn)
         );
         #[cfg(target_arch = "x86")]
-        llvm_asm!("
+        asm!(
             // Restore initial stack pointer
-            movl $0, %esp
+            "movl esp, {stack_pointer}",
             // Clear state flags.
-            pushl $$0
-            popfl
+            "push 0",
+            "popfl",
             // Clear rtld_fini.
-            movl $$0, %edx
+            "movl edx, 0",
             // Start the program.
-            jmpl *%eax
-        "
-        : /* no output */
-        : "irm" ($stack_pointer), "{ax}" ($entry_point)
-        : "memory", "cc", "esp", "edx"
-        : "volatile"
+            "jmpl eax",
+            /* no output */
+            stack_pointer = in(reg) $stack_pointer,
+            in("eax") $entry_point,
+            options(noreturn)
         );
         #[cfg(target_arch = "aarch64")]
-        llvm_asm!("
+        asm!(
             // Restore initial stack pointer
-            mov sp, $0
+            "mov sp, {stack_pointer}",
             // Clear rtld_fini.
-            mov x0, 0
+            "mov x0, 0",
             // Start the program.
-            br $1
-        "
-        : /* no output */
-        : "r" ($stack_pointer), "r" ($entry_point)
-        : "memory", "x0"
-        : "volatile"
+            "br {entry_point}",
+            /* no output */
+            stack_pointer = in(reg) $stack_pointer,
+            entry_point = in(reg) $entry_point,
+            options(noreturn)
         );
         #[cfg(target_arch = "arm")]
-        llvm_asm!("
+        asm!(
             // Restore initial stack pointer
-            mov sp, $0
+            "mov sp, {stack_pointer}",
             // Clear rtld_fini.
-            mov r0, $$0
+            "mov r0, 0",
             // Start the program.
-            mov pc, $1
-        "
-        : /* no output */
-        : "r" ($stack_pointer), "r" ($entry_point)
-        : "memory", "r0"
-        : "volatile"
+            "mov pc, {entry_point}",
+            /* no output */
+            stack_pointer = in(reg) $stack_pointer,
+            entry_point = in(reg) $entry_point,
+            options(noreturn)
         );
-
     }
 }
 
