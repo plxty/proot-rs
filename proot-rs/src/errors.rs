@@ -135,7 +135,7 @@ impl From<IOError> for Error {
         Error {
             errno: match error.raw_os_error() {
                 // we try to convert it to an errno
-                Some(errno) => Errno::from_i32(errno),
+                Some(errno) => Errno::from_raw(errno),
                 None => Errno::UnknownErrno,
             },
             msg: None,

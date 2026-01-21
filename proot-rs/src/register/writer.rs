@@ -136,7 +136,7 @@ impl PtraceWriter for Registers {
             let word = buf.read_uint::<NativeEndian>(word_size).unwrap() as Word;
             let dest_addr = unsafe { (dest_tracee as *mut Word).offset(i) as *mut c_void };
 
-            unsafe { ptrace::write(self.get_pid(), dest_addr, word as *mut c_void)? };
+            ptrace::write(self.get_pid(), dest_addr, word as i64)?;
         }
 
         // Copy the bytes in the last word carefully since we have to
@@ -156,7 +156,7 @@ impl PtraceWriter for Registers {
 
         let last_word = convert_bytes_to_word(bytes);
         // We can now safely write the final word.
-        unsafe { ptrace::write(self.get_pid(), last_dest_addr, last_word as *mut c_void)? };
+        ptrace::write(self.get_pid(), last_dest_addr, last_word as i64)?;
 
         Ok(())
     }

@@ -83,7 +83,10 @@ mod tests {
                             nix::fcntl::OFlag::O_RDONLY,
                             nix::sys::stat::Mode::empty(),
                         );
-                        assert_eq!(fd.map(|_| ()).map_err(Into::<Error>::into), $open_result);
+                        assert_eq!(
+                            fd.as_ref().map(|_| ()).map_err(|&err| err.into()) as Result<()>,
+                            $open_result
+                        );
                         if fd.is_ok() {
                             // only try fchdir() after dir is opened successfully.
                             assert_eq!(
