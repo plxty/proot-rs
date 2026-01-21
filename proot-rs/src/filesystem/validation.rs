@@ -4,23 +4,23 @@ use std::path::Path;
 
 /// Check wheter the path is a valid path (file that exists, or path that ends
 /// in /)
-pub fn is_valid_path(path: &str, error_message: String) -> Result<(), String> {
-    if !Path::new(path).exists() {
-        Err(error_message)
-    } else {
-        Ok(())
-    }
+fn is_valid_path(path: &str) -> bool {
+    Path::new(path).exists()
 }
 
 /// Check whether the path exists and is a folder
-pub fn path_validator(path: String) -> Result<(), String> {
-    is_valid_path(path.as_str(), path.to_string() + " is not a valid path.")
+pub fn path_validator(path: &str) -> Result<String, String> {
+    if !is_valid_path(path) {
+        Err(format!("{} is not a valid path.", path))
+    } else {
+        Ok(path.to_string())
+    }
     //TODO: check for folder path
 }
 
 /// Check whether a path is of the type ```host_path:guest_path``` and that the
 /// host.
-pub fn binding_validator(binding_paths: String) -> Result<(), String> {
+pub fn binding_validator(binding_paths: &str) -> Result<String, String> {
     let parts: Vec<&str> = binding_paths.split_terminator(':').collect();
 
     if parts.len() != 2 {
@@ -28,7 +28,11 @@ pub fn binding_validator(binding_paths: String) -> Result<(), String> {
     } else {
         let host_path: &str = parts[0];
 
-        is_valid_path(host_path, host_path.to_string() + " is not a valid path.")
+        if !is_valid_path(host_path) {
+            Err(format!("{} is not a valid path.", host_path))
+        } else {
+            Ok(binding_paths.to_string())
+        }
     }
 
     //TODO: add a check to avoid equivalent paths bindings?
@@ -46,7 +50,7 @@ mod tests {
         let correct_paths = [".", "./", "..", "../", "./.."];
 
         for path in &correct_paths {
-            assert_eq!(path_validator(path.to_string()), Ok(()));
+            assert_eq!(path_validator(path), Ok(path.to_string()));
         }
     }
 
@@ -61,7 +65,7 @@ mod tests {
 
         for path in &incorrect_paths {
             assert_eq!(
-                path_validator(path.to_string()),
+                path_validator(path),
                 Err(path.to_string() + " is not a valid path.")
             );
         }
@@ -72,7 +76,7 @@ mod tests {
         let correct_bindings = [".:.", "..:..", ".:../../", ".:ignored"];
 
         for path in &correct_bindings {
-            assert_eq!(binding_validator(path.to_string()), Ok(()));
+            assert_eq!(binding_validator(path), Ok(path.to_string()));
         }
     }
 
@@ -82,12 +86,12 @@ mod tests {
 
         for path in &incorrect_paths {
             assert_eq!(
-                binding_validator(path.to_string()),
+                binding_validator(path),
                 Err("should be: path_host:path_guest".to_string())
             );
         }
         assert_eq!(
-            binding_validator("impossible path:.".to_string()),
+            binding_validator("impossible path:."),
             Err("impossible path is not a valid path.".to_string())
         );
     }

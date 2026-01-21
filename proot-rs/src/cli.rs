@@ -1,4 +1,4 @@
-use clap::{crate_version, App, Arg};
+use clap::{crate_version, Arg, ArgAction, Command};
 
 use crate::errors::*;
 use crate::filesystem::validation::{binding_validator, path_validator};
@@ -7,32 +7,29 @@ use crate::filesystem::FileSystem;
 pub const DEFAULT_ROOTFS: &'static str = "/";
 pub const DEFAULT_CWD: &'static str = "/";
 
-pub fn get_args_parser() -> App<'static, 'static> {
-    App::new("proot-rs")
+pub fn get_args_parser() -> Command {
+    Command::new("proot-rs")
         .about("chroot, mount --bind, and binfmt_misc without privilege/setup.")
         .version(crate_version!())
-        .arg(Arg::with_name("rootfs")
-            .short("r")
+        .arg(Arg::new("rootfs")
+            .short('r')
             .long("rootfs")
             .help("Use *path* as the new guest root file-system.")
-            .takes_value(true)
             .default_value(DEFAULT_ROOTFS)
-            .validator(path_validator))
-        .arg(Arg::with_name("bind")
-            .short("b")
+            .value_parser(path_validator))
+        .arg(Arg::new("bind")
+            .short('b')
             .long("bind")
             .help("Make the content of *host_path* accessible in the guest rootfs. Format: host_path:guest_path")
-            .multiple(true)
-            .takes_value(true)
-            .validator(binding_validator))
-        .arg(Arg::with_name("cwd")
-            .short("w")
+            .action(ArgAction::Append)
+            .value_parser(binding_validator))
+        .arg(Arg::new("cwd")
+            .short('w')
             .long("cwd")
             .help("Set the initial working directory to *path*.")
-            .takes_value(true)
             .default_value(DEFAULT_CWD))
-        .arg(Arg::with_name("command")
-            .multiple(true))
+        .arg(Arg::new("command")
+            .action(ArgAction::Append))
 }
 
 pub fn parse_config() -> Result<(FileSystem, Vec<String>)> {
@@ -45,13 +42,13 @@ pub fn parse_config() -> Result<(FileSystem, Vec<String>)> {
     debug!("proot-rs startup with args:\n{:#?}", matches);
 
     // option -r
-    let rootfs: &str = matches.value_of("rootfs").unwrap();
+    let rootfs = matches.get_one::<String>("rootfs").unwrap();
     // -r *path* is equivalent to -b *path*:/
     fs.set_root(rootfs)?;
 
     // option(s) -b
-    if let Some(bindings) = matches.values_of("bind") {
-        let raw_bindings_str: Vec<&str> = bindings.collect::<Vec<&str>>();
+    if let Some(bindings) = matches.get_many::<String>("bind") {
+        let raw_bindings_str = bindings.collect::<Vec<_>>();
 
         for raw_binding_str in &raw_bindings_str {
             let parts: Vec<&str> = raw_binding_str.split_terminator(':').collect();
@@ -60,11 +57,11 @@ pub fn parse_config() -> Result<(FileSystem, Vec<String>)> {
     }
 
     // option -w
-    let cwd: &str = matches.value_of("cwd").unwrap();
+    let cwd = matches.get_one::<String>("cwd").unwrap();
     fs.set_cwd(cwd)?;
 
     // command
-    let command: Vec<String> = match matches.values_of("command") {
+    let command: Vec<String> = match matches.get_many::<String>("command") {
         Some(values) => values.map(|s| s.into()).collect(),
         None => ["/bin/sh".into()].into(),
     };

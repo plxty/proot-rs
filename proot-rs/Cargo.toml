@@ -7,12 +7,12 @@ edition = "2021"
 [dependencies]
 libc = "0.2.25"
 nix = "0.24.1"
-clap = "2.25.1"
-sc = { git = "https://github.com/japaric/syscall.rs.git", rev = "431ecf9db8cafa48c9bb268bf2fdbe8141d902f6" }
+clap = { version = "4.5.54", features = ["cargo"] }
+sc = { git = "https://github.com/japaric/syscall.rs.git", rev = "053dc07c4e9f1399c548ee294253015c7c9682bd" }
 lazy_static = "1.4.0"
 byteorder = "1.1.0"
 log = "0.4.14"
-env_logger = "0.8.3"
+env_logger = "0.11.8"
 loader-shim = { path = "../loader-shim" }
 
 [dev-dependencies]
