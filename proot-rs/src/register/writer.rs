@@ -225,7 +225,10 @@ mod tests {
                 // calling the mkdir function, which should call the MKDIR syscall
                 execvp(
                     &CString::new("mkdir").unwrap(),
-                    &[CString::new(".").unwrap(), CString::new(test_path).unwrap()],
+                    &[
+                        CString::new("mkdir").unwrap(), // arg0 should be the same as filename
+                        CString::new(test_path).unwrap(),
+                    ],
                 )
                 .expect("failed execvp mkdir");
             },

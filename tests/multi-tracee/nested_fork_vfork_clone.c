@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdint.h>
 
 #define ACTION_EMPTY 0
 #define ACTION_FORK 1
@@ -43,7 +44,7 @@ static void exit_with_error(char *msg) {
     exit(1);
 }
 
-void do_things(size_t action) { printf("%d", action); }
+void do_things(size_t action) { printf("%lu", action); }
 
 void wait_for_child_exit(pid_t pid) {
     while (1) {
@@ -67,7 +68,10 @@ void wait_for_child_exit(pid_t pid) {
     }
 }
 
-int clone_child_func(size_t actions) {
+void perform(size_t actions);
+
+int clone_child_func(void *arg) {
+    size_t actions = (size_t)(uintptr_t) arg;
     do_things(ACTION_CLONE);
     perform(actions >> ACTION_BITS_LEN);
     return 0;
@@ -106,7 +110,7 @@ void perform(size_t actions) {
         char *stack_top = stack + STACK_SIZE;
 
         pid_t pid =
-            clone(clone_child_func, stack_top, CLONE_FS | SIGCHLD, actions);
+            clone(clone_child_func, stack_top, CLONE_FS | SIGCHLD, (void*)(uintptr_t)actions);
         if (pid == -1)
             exit_with_error("Error while clone()");
 

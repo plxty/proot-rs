@@ -6,6 +6,10 @@ if is_empty "${CARGO}"
     set_env CARGO cargo
 end
 
+if is_empty "${PROOT_TEST_ROOTFS}"
+    set_env PROOT_TEST_ROOTFS "${PWD}/rootfs"
+end
+
 if not is_empty "${CARGO_BUILD_TARGET}"
     set_env CARGO_EXTRA_FLAGS "${CARGO_EXTRA_FLAGS} --target=${CARGO_BUILD_TARGET}"
 end
@@ -59,26 +63,42 @@ script = '''
 cp target/${CARGO_BUILD_TARGET}/${OUTPUT_DIR_NAME}/loader-shim proot-rs/src/kernel/execve/
 '''
 
+[tasks.rootfs]
+script_runner = "@shell"
+script ='''
+if [ ! -d "${PROOT_TEST_ROOTFS}" ]; then
+    # TODO: More platforms?
+    mkdir -p "${PROOT_TEST_ROOTFS}"
+    curl "https://cdimage.ubuntu.com/ubuntu-base/releases/noble/release/ubuntu-base-24.04.3-base-amd64.tar.gz" -o /dev/stdout | \
+        tar -xzf /dev/stdin -C "${PROOT_TEST_ROOTFS}"
+
+    # Rollback some hierarchy... https://wiki.gentoo.org/wiki/Merge-usr
+    cd "${PROOT_TEST_ROOTFS}"
+    rm bin lib lib64 sbin
+    mv usr/{bin,lib,sbin} .
+    ln -s lib lib64
+    cp lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 lib64/
+
+    # Defaults to bash:
+    ln -sf bash bin/sh
+fi
+'''
+
 [tasks.test]
 clear = true
 dependencies = ["unit-test", "integration-test"]
 
 [tasks.unit-test]
+dependencies = ["rootfs"]
 script_runner = "@shell"
 script = '''
-if [ -z "${PROOT_TEST_ROOTFS}" ]; then
-    export PROOT_TEST_ROOTFS="$(pwd)/rootfs"
-fi
-"$CARGO" test --package=proot-rs ${CARGO_EXTRA_FLAGS} ${@} -- --test-threads=1 --nocapture
+RUSTC_BOOTSTRAP=1 "$CARGO" test --package=proot-rs ${CARGO_EXTRA_FLAGS} ${@} -- --test-threads=1 --nocapture
 '''
 
 [tasks.integration-test]
-dependencies = ["build"]
+dependencies = ["build", "rootfs"]
 script_runner = "@shell"
 script = '''
-if [ -z "${PROOT_TEST_ROOTFS}" ]; then
-    export PROOT_TEST_ROOTFS="$(pwd)/rootfs"
-fi
 if [ -z "${PROOT_RS}" ]; then
     export PROOT_RS="$(realpath target/${CARGO_BUILD_TARGET}/${OUTPUT_DIR_NAME}/proot-rs)"
 fi
