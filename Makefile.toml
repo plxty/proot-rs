@@ -53,7 +53,8 @@ echo -e "loader-shim:\t$(realpath target/${CARGO_BUILD_TARGET}/${OUTPUT_DIR_NAME
 [tasks.build-loader]
 script_runner = "@shell"
 script = '''
-RUSTFLAGS="-C panic=abort -C link-self-contained=no" "$CARGO" build --bin=loader-shim --features="build-binary" ${CARGO_EXTRA_FLAGS}
+RUSTC_BOOTSTRAP=1 RUSTFLAGS="-C panic=abort -C link-self-contained=no" \
+    "$CARGO" build --bin=loader-shim --features="build-binary" ${CARGO_EXTRA_FLAGS}
 '''
 
 [tasks.copy-loader]

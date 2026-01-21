@@ -7,11 +7,11 @@ authors = ["PRoot Developers <proot_me@googlegroups.com>"]
 edition = "2021"
 
 [dependencies]
-sc = { git = "https://github.com/japaric/syscall.rs.git", rev = "431ecf9db8cafa48c9bb268bf2fdbe8141d902f6" }
-rlibc = { version = "1.0", optional = true }
+sc = { git = "https://github.com/japaric/syscall.rs.git", rev = "053dc07c4e9f1399c548ee294253015c7c9682bd" }
+compiler_builtins = { version = "0.1.160", optional = true, features = [ "mem" ] }
 
 [features]
-build-binary = [ "rlibc" ]
+build-binary = [ "compiler_builtins" ]
 
 [[bin]]
 name = "loader-shim"

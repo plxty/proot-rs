@@ -17,7 +17,7 @@ extern "C" {}
 // `memset()`.
 //
 // See `-nodefaultlibs` at https://gcc.gnu.org/onlinedocs/gcc/Link-Options.html
-extern crate rlibc;
+extern crate compiler_builtins;
 
 mod script;
 
