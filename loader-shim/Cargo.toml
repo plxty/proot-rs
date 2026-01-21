@@ -4,7 +4,7 @@
 name = "loader-shim"
 version = "0.1.0"
 authors = ["PRoot Developers <proot_me@googlegroups.com>"]
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 sc = { git = "https://github.com/japaric/syscall.rs.git", rev = "053dc07c4e9f1399c548ee294253015c7c9682bd" }

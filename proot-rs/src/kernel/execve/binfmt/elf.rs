@@ -1,6 +1,6 @@
 use crate::errors::*;
-use crate::filesystem::readers::ExtraReader;
 use crate::filesystem::FileSystem;
+use crate::filesystem::readers::ExtraReader;
 use crate::kernel::execve::load_info::LoadInfo;
 use crate::kernel::execve::params::ExecveParameters;
 use std::any::TypeId;
@@ -86,8 +86,8 @@ impl ProgramHeader {
         func64: F64,
     ) -> Result<V> {
         match self {
-            ProgramHeader::ProgramHeader32(ref program_header) => func32(program_header),
-            ProgramHeader::ProgramHeader64(ref program_header) => func64(program_header),
+            ProgramHeader::ProgramHeader32(program_header) => func32(program_header),
+            ProgramHeader::ProgramHeader64(program_header) => func64(program_header),
         }
     }
 }
@@ -232,8 +232,8 @@ impl ElfHeader {
         func64: F64,
     ) -> Result<V> {
         match self {
-            ElfHeader::ElfHeader32(ref elf_header) => func32(elf_header),
-            ElfHeader::ElfHeader64(ref elf_header) => func64(elf_header),
+            ElfHeader::ElfHeader32(elf_header) => func32(elf_header),
+            ElfHeader::ElfHeader64(elf_header) => func64(elf_header),
         }
     }
     #[inline]
@@ -247,8 +247,8 @@ impl ElfHeader {
         func64: F64,
     ) -> Result<V> {
         match self {
-            ElfHeader::ElfHeader32(ref mut elf_header) => func32(elf_header),
-            ElfHeader::ElfHeader64(ref mut elf_header) => func64(elf_header),
+            ElfHeader::ElfHeader32(elf_header) => func32(elf_header),
+            ElfHeader::ElfHeader64(elf_header) => func64(elf_header),
         }
     }
 }

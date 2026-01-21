@@ -5,7 +5,7 @@
 #![feature(lang_items)]
 
 #[allow(unused_attributes)]
-extern "C" {}
+unsafe extern "C" {}
 
 // The compiler may emit a call to the `memset()` function even if there is
 // no such call in our code. However, since we use `-nostdlib` or
@@ -120,7 +120,7 @@ macro_rules! branch {
 /**
  * Interpret the load script pointed to by @cursor.
  */
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn _start(mut cursor: *const ()) {
     let mut traced = false;
     let mut reset_at_base = true;
@@ -132,7 +132,7 @@ pub unsafe extern "C" fn _start(mut cursor: *const ()) {
         // TODO: Check LoadStatement flag is vaild: Converting memory regions
         // directly to references to enum in rust is dangerous because invalid
         // tags can lead to undefined behaviors.
-        let stmt: &LoadStatement = match (cursor as *const LoadStatement).as_ref() {
+        let stmt: &LoadStatement = match unsafe { (cursor as *const LoadStatement).as_ref() } {
             Some(stmt) => stmt,
             None => panic!("Value of cursor is null"),
         };
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn _start(mut cursor: *const ()) {
                 if mmap.clear_length != 0 {
                     let start = (mmap.addr + mmap.length - mmap.clear_length) as *mut u8;
                     for i in 0..mmap.clear_length {
-                        *start.offset(i as isize) = 0u8;
+                        unsafe { *start.offset(i as isize) = 0u8 };
                     }
                 }
                 // if value of AT_BASE need to be reset
@@ -220,7 +220,8 @@ pub unsafe extern "C" fn _start(mut cursor: *const ()) {
                     PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN
                 );
             }
-            st @ (LoadStatement::StartTraced(start) | LoadStatement::Start(start)) => {
+            // SAFETY: Notice the unsafe here, we're operating plenty of pointers here.
+            st @ (LoadStatement::StartTraced(start) | LoadStatement::Start(start)) => unsafe {
                 if let LoadStatement::StartTraced(_) = st {
                     traced = true;
                 }
@@ -293,10 +294,10 @@ pub unsafe extern "C" fn _start(mut cursor: *const ()) {
                     branch!(start.stack_pointer, start.entry_point);
                 }
                 unreachable!()
-            }
+            },
         }
         // move cursor to next load statement
-        cursor = (cursor as *const u8).offset(stmt.as_bytes().len() as _) as _;
+        cursor = unsafe { (cursor as *const u8).offset(stmt.as_bytes().len() as _) as _ };
     }
 }
 
@@ -336,7 +337,7 @@ fn panic_handler(panic_info: &PanicInfo<'_>) -> ! {
     unreachable!()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe fn __aeabi_unwind_cpp_pr0() -> () {
     loop {}
 }
