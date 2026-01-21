@@ -15,6 +15,7 @@ use super::{Canonicalizer, Substitutor, Translator};
 /// share this structure, otherwise a copy will be created.
 ///
 /// [`fs_struct`]: https://elixir.bootlin.com/linux/latest/source/include/linux/fs_struct.h
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct FileSystem {
     /// List of bindings used to replicate `mount` and `bind`.
@@ -191,11 +192,13 @@ impl FileSystem {
         &self.root
     }
 
+    #[allow(dead_code)]
     #[inline]
     pub fn get_glue_type(&self) -> &Mode {
         &self.glue_type
     }
 
+    #[allow(dead_code)]
     #[inline]
     pub fn set_glue_type(&mut self, mode: Mode) {
         self.glue_type = mode;

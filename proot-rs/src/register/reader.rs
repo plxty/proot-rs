@@ -3,7 +3,7 @@ use crate::register::{Current, Registers, SysArg, SysArgIndex, Word};
 use libc::{c_void, PATH_MAX};
 use nix::sys::ptrace;
 use nix::unistd::Pid;
-use std::mem::{size_of, transmute};
+use std::mem::size_of;
 use std::path::PathBuf;
 
 #[cfg(target_pointer_width = "32")]
@@ -15,7 +15,7 @@ pub fn convert_word_to_bytes(value_to_convert: Word) -> [u8; 4] {
 #[cfg(target_pointer_width = "64")]
 #[inline]
 pub fn convert_word_to_bytes(value_to_convert: Word) -> [u8; 8] {
-    unsafe { transmute(value_to_convert) }
+    u64::to_ne_bytes(value_to_convert)
 }
 
 pub trait PtraceReader {

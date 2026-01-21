@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 
 pub trait Substitutor {
     fn substitute<P: AsRef<Path>>(&self, path: P, from_side: Side) -> Result<PathBuf>;
+
+    #[allow(dead_code)]
     fn substitute_intermediary_and_glue<P: AsRef<Path>>(
         &self,
         path: P,

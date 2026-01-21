@@ -7,7 +7,7 @@ use std::{collections::HashMap, convert::TryFrom};
 
 use libc::{c_int, c_void, pid_t, siginfo_t};
 use nix::sys::ptrace::{self, Event as PtraceEvent};
-use nix::sys::signal::{self, Signal};
+use nix::sys::signal::{self, SigHandler, Signal};
 use nix::sys::wait::{self, WaitPidFlag, WaitStatus::*};
 use nix::unistd::{self, ForkResult, Pid};
 
@@ -414,6 +414,9 @@ impl PRoot {
 /// and must therefore stop the program's execution.
 pub extern "C" fn stop_program(sig_num: c_int, _: *mut siginfo_t, _: *mut c_void) {
     let signal = Signal::try_from(sig_num);
+    // Rust using abort() in panic!(), leading infinite recursion,
+    // therefore we need to unmask it at first, before panic.
+    let _ = unsafe { nix::sys::signal::signal(Signal::SIGABRT, SigHandler::SigDfl) };
     panic!("abnormal signal received: {:?}", signal);
 }
 

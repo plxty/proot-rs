@@ -1,6 +1,7 @@
 #![allow(clippy::redundant_static_lifetimes)]
 #![allow(clippy::redundant_field_names)]
-#![feature(specialization)]
+// TODO: Try to remove the required RUST_BOOTSTRAP=1, which is unstable :/
+#![feature(min_specialization)] // errors.rs
 
 extern crate clap;
 extern crate libc;

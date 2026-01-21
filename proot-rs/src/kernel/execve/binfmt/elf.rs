@@ -11,12 +11,12 @@ use std::mem;
 use super::LoadResult;
 
 const EI_NIDENT: usize = 16;
-const ET_REL: u16 = 1;
+// const ET_REL: u16 = 1;
 const ET_EXEC: u16 = 2;
 const ET_DYN: u16 = 3;
-const ET_CORE: u16 = 4;
+// const ET_CORE: u16 = 4;
 pub const PT_LOAD: u32 = 1;
-pub const PT_DYNAMIC: u32 = 2;
+// pub const PT_DYNAMIC: u32 = 2;
 pub const PT_INTERP: u32 = 3;
 pub const PT_GNU_STACK: u32 = 0x6474_e551;
 pub const PF_X: u32 = 1;
@@ -25,16 +25,16 @@ pub const PF_R: u32 = 4;
 
 /// Use TSigned = i32 and TUnsigned = u32 for 32bits,
 /// and TSigned = u64 and TUnsigned = u64 for 64bits
-pub struct DynamicEntry<TSigned, TUnsigned> {
-    d_tag: TSigned,
-    d_val: TUnsigned,
-}
+// pub struct DynamicEntry<TSigned, TUnsigned> {
+//     d_tag: TSigned,
+//     d_val: TUnsigned,
+// }
 
-pub enum DynamicType {
-    DtStrtab = 5,
-    DtRpath = 15,
-    DtRunpath = 29,
-}
+// pub enum DynamicType {
+//     DtStrtab = 5,
+//     DtRpath = 15,
+//     DtRunpath = 29,
+// }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ExecutableClass {
