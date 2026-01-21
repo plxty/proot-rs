@@ -2,6 +2,10 @@ env_scripts = [
 '''
 #!@duckscript
 
+if is_empty "${CARGO}"
+    set_env CARGO cargo
+end
+
 if not is_empty "${CARGO_BUILD_TARGET}"
     set_env CARGO_EXTRA_FLAGS "${CARGO_EXTRA_FLAGS} --target=${CARGO_BUILD_TARGET}"
 end

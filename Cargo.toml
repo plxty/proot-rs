@@ -1,6 +1,5 @@
-cargo-features = ["strip"]
-
 [workspace]
+resolver = "2"
 members = [
   "proot-rs",
   "loader-shim",
