@@ -45,7 +45,7 @@ clear = true
 dependencies = ["build-loader", "copy-loader"]
 script_runner = "@shell"
 script = '''
-RUSTC_BOOTSTRAP=1 "$CARGO" build --bin=proot-rs ${CARGO_EXTRA_FLAGS}
+RUSTC_BOOTSTRAP=1 "$CARGO" build -p proot-rs --bin=proot-rs ${CARGO_EXTRA_FLAGS}
 echo -e "proot-rs:\t$(realpath target/${CARGO_BUILD_TARGET}/${OUTPUT_DIR_NAME}/proot-rs)"
 echo -e "loader-shim:\t$(realpath target/${CARGO_BUILD_TARGET}/${OUTPUT_DIR_NAME}/loader-shim)"
 '''
@@ -54,7 +54,7 @@ echo -e "loader-shim:\t$(realpath target/${CARGO_BUILD_TARGET}/${OUTPUT_DIR_NAME
 script_runner = "@shell"
 script = '''
 RUSTC_BOOTSTRAP=1 RUSTFLAGS="-C panic=abort -C link-self-contained=no" \
-    "$CARGO" build --bin=loader-shim --features="build-binary" ${CARGO_EXTRA_FLAGS}
+    "$CARGO" build -p loader-shim --bin=loader-shim --features="build-binary" ${CARGO_EXTRA_FLAGS}
 '''
 
 [tasks.copy-loader]

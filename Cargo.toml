@@ -4,6 +4,9 @@ members = [
   "proot-rs",
   "loader-shim",
 ]
+default-members = [
+  "proot-rs",
+]
 
 [profile.release]
 strip = true
