@@ -48,62 +48,71 @@ mod tests {
                     // Test open(linkpath + "/") with `O_CREAT` and `O_EXCL`, and this will get a
                     // EISDIR, and symlink follow didn't not happen.
                     assert_eq!(
-                        nc::open(
-                            format!("{}/", linkpath).as_str(),
-                            (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
-                            0o755
-                        ),
+                        unsafe {
+                            nc::open(
+                                format!("{}/", linkpath).as_str(),
+                                (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
+                                0o755,
+                            )
+                        },
                         Err(nc::EISDIR)
                     );
 
                     // Test open(linkpath) with `O_CREAT` and `O_EXCL`, and this will get a EEXIST,
                     // because symlink follow didn't not happen.
                     assert_eq!(
-                        nc::open(
-                            linkpath,
-                            (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
-                            0o755
-                        ),
+                        unsafe {
+                            nc::open(
+                                linkpath,
+                                (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
+                                0o755,
+                            )
+                        },
                         Err(nc::EEXIST)
                     );
 
                     // Test open(linkpath) with `O_CREAT`, and this will create a regular file at
                     // `filepath`, because symlink follow happened.
-                    let file_fd =
+                    let file_fd = unsafe {
                         nc::open(linkpath, (OFlag::O_RDONLY | OFlag::O_CREAT).bits(), 0o755)
-                            .unwrap();
+                    }
+                    .unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::fstat(file_fd, &mut stat).unwrap();
+                    unsafe { nc::fstat(file_fd, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
-                    nc::unlink(filepath).unwrap();
+                    unsafe { nc::unlink(filepath) }.unwrap();
 
                     // Test open(filepath) with `O_CREAT` and `O_EXCL`, and this will create a
                     // regular file at `filepath`.
-                    let file_fd = nc::open(
-                        filepath,
-                        (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
-                        0o755,
-                    )
+                    let file_fd = unsafe {
+                        nc::open(
+                            filepath,
+                            (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
+                            0o755,
+                        )
+                    }
                     .unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::fstat(file_fd, &mut stat).unwrap();
+                    unsafe { nc::fstat(file_fd, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
-                    nc::close(file_fd).unwrap();
+                    unsafe { nc::close(file_fd) }.unwrap();
 
                     // test open() with `OFlag::O_NOFOLLOW`;
-                    let file_fd =
-                        nc::open(linkpath, (OFlag::O_NOFOLLOW | OFlag::O_PATH).bits(), 0).unwrap();
+                    let file_fd = unsafe {
+                        nc::open(linkpath, (OFlag::O_NOFOLLOW | OFlag::O_PATH).bits(), 0)
+                    }
+                    .unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::fstat(file_fd, &mut stat).unwrap();
+                    unsafe { nc::fstat(file_fd, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
-                    nc::close(file_fd).unwrap();
+                    unsafe { nc::close(file_fd) }.unwrap();
 
                     // test open() in normal case;
-                    let file_fd = nc::open(linkpath, 0, 0).unwrap();
+                    let file_fd = unsafe { nc::open(linkpath, 0, 0) }.unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::fstat(file_fd, &mut stat).unwrap();
+                    unsafe { nc::fstat(file_fd, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
-                    nc::close(file_fd).unwrap();
+                    unsafe { nc::close(file_fd) }.unwrap();
                 });
                 let _ = std::fs::remove_file(linkpath);
                 let _ = std::fs::remove_file(filepath);

@@ -108,7 +108,7 @@ pub fn exit(_tracee: &mut Tracee) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
+    use std::{fs::File, os::fd::AsRawFd};
 
     use nix::{fcntl::OFlag, sys::stat::Mode};
 
@@ -143,42 +143,57 @@ mod tests {
 
                     // This will clone the original symbolic link, because link() does not
                     // dereference the symbolic link
-                    nc::link(original_linkpath, cloned_linkpath).unwrap();
+                    unsafe { nc::link(original_linkpath, cloned_linkpath) }.unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::lstat(cloned_linkpath, &mut stat).unwrap();
+                    unsafe { nc::lstat(cloned_linkpath, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
                     let mut buf = [0_u8; nc::PATH_MAX as usize];
-                    let n_read = nc::readlink(cloned_linkpath, &mut buf).unwrap() as usize;
+                    let n_read =
+                        unsafe { nc::readlink(cloned_linkpath, &mut buf) }.unwrap() as usize;
                     assert_eq!(original_filepath.as_bytes(), &buf[0..n_read]);
 
                     // This will make a hard link to the `original_filepath`
-                    nc::link(original_filepath, cloned_filepath).unwrap();
+                    unsafe { nc::link(original_filepath, cloned_filepath) }.unwrap();
                     let mut cloned_filestat = nc::stat_t::default();
-                    nc::lstat(cloned_filepath, &mut cloned_filestat).unwrap();
+                    unsafe { nc::lstat(cloned_filepath, &mut cloned_filestat) }.unwrap();
                     assert_eq!(
                         (cloned_filestat.st_mode as nc::mode_t & nc::S_IFMT),
                         nc::S_IFREG
                     );
 
                     let mut original_filestat = nc::stat_t::default();
-                    nc::lstat(original_filepath, &mut original_filestat).unwrap();
+                    unsafe { nc::lstat(original_filepath, &mut original_filestat) }.unwrap();
                     assert_eq!(cloned_filestat.st_ino, original_filestat.st_ino);
 
                     // test rename()
 
-                    nc::rename(cloned_filepath, renamed_filepath).unwrap();
+                    unsafe { nc::rename(cloned_filepath, renamed_filepath) }.unwrap();
                     let mut stat = nc::stat_t::default();
                     // This file does not exist because it has been renamed.
-                    assert_eq!(nc::lstat(cloned_filepath, &mut stat), Err(nc::ENOENT));
-                    nc::lstat(renamed_filepath, &mut stat).unwrap();
+                    assert_eq!(
+                        unsafe { nc::lstat(cloned_filepath, &mut stat) },
+                        Err(nc::ENOENT)
+                    );
+                    unsafe { nc::lstat(renamed_filepath, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
 
                     // test renameat()
-                    nc::renameat(fd, renamed_filename, fd, rerenamed_filename).unwrap();
+                    unsafe {
+                        nc::renameat(
+                            fd.as_raw_fd(),
+                            renamed_filename,
+                            fd.as_raw_fd(),
+                            rerenamed_filename,
+                        )
+                    }
+                    .unwrap();
                     let mut stat = nc::stat_t::default();
                     // This file does not exist because it has been renamed.
-                    assert_eq!(nc::lstat(renamed_filepath, &mut stat), Err(nc::ENOENT));
-                    nc::lstat(rerenamed_filepath, &mut stat).unwrap();
+                    assert_eq!(
+                        unsafe { nc::lstat(renamed_filepath, &mut stat) },
+                        Err(nc::ENOENT)
+                    );
+                    unsafe { nc::lstat(rerenamed_filepath, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
                 });
 

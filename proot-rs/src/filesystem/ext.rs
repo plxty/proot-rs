@@ -133,33 +133,33 @@ mod tests {
 
                 let result = std::panic::catch_unwind(|| {
                     // create a temporary dir for test
-                    nc::mkdir(base_dir, 0o755).unwrap();
+                    unsafe { nc::mkdir(base_dir, 0o755) }.unwrap();
 
                     // init file and dir
                     File::create(&file_name).unwrap();
-                    nc::mkdir(&dir_name, 0o755).unwrap();
+                    unsafe { nc::mkdir(&dir_name, 0o755) }.unwrap();
 
-                    nc::symlink(&file_name, &link1_name).unwrap();
-                    nc::symlink(&dir_name, &link2_name).unwrap();
+                    unsafe { nc::symlink(&file_name, &link1_name) }.unwrap();
+                    unsafe { nc::symlink(&dir_name, &link2_name) }.unwrap();
 
                     let mut stat = nc::stat_t::default();
 
                     // lstat("link1")
-                    nc::lstat(&link1_name, &mut stat).unwrap();
+                    unsafe { nc::lstat(&link1_name, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
 
                     // lstat("link1/")
                     assert_eq!(
-                        nc::lstat(format!("{}/", link1_name).as_str(), &mut stat),
+                        unsafe { nc::lstat(format!("{}/", link1_name).as_str(), &mut stat) },
                         Err(nc::ENOTDIR)
                     );
 
                     // lstat("link2")
-                    nc::lstat(&link2_name, &mut stat).unwrap();
+                    unsafe { nc::lstat(&link2_name, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
 
                     // lstat("link2/")
-                    nc::lstat(format!("{}/", link2_name).as_str(), &mut stat).unwrap();
+                    unsafe { nc::lstat(format!("{}/", link2_name).as_str(), &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFDIR);
                 });
 
@@ -185,34 +185,34 @@ mod tests {
 
                 let result = std::panic::catch_unwind(|| {
                     // create a temporary dir for test
-                    nc::mkdir(base_dir, 0o755).unwrap();
+                    unsafe { nc::mkdir(base_dir, 0o755) }.unwrap();
 
                     let mut stat = nc::stat_t::default();
 
                     // mkdir("dir1"), test mkdir without trailing slash
-                    nc::mkdir(&dir1_name, 0o755).unwrap();
-                    nc::lstat(&dir1_name, &mut stat).unwrap();
+                    unsafe { nc::mkdir(&dir1_name, 0o755) }.unwrap();
+                    unsafe { nc::lstat(&dir1_name, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFDIR);
 
                     // mkdir("dir2/"), test mkdir with trailing slash
-                    nc::mkdir(format!("{}/", dir2_name).as_str(), 0o755).unwrap();
-                    nc::lstat(format!("{}/", dir2_name).as_str(), &mut stat).unwrap();
+                    unsafe { nc::mkdir(format!("{}/", dir2_name).as_str(), 0o755) }.unwrap();
+                    unsafe { nc::lstat(format!("{}/", dir2_name).as_str(), &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFDIR);
 
-                    nc::symlink(&dir3_name, &link1_name).unwrap();
+                    unsafe { nc::symlink(&dir3_name, &link1_name) }.unwrap();
 
                     // mkdir("link1"), test mkdir with a symlink path without trailing slash
-                    assert_eq!(nc::mkdir(&link1_name, 0o755), Err(nc::EEXIST));
-                    assert_eq!(nc::lstat(&dir3_name, &mut stat), Err(nc::ENOENT));
+                    assert_eq!(unsafe { nc::mkdir(&link1_name, 0o755) }, Err(nc::EEXIST));
+                    assert_eq!(unsafe { nc::lstat(&dir3_name, &mut stat) }, Err(nc::ENOENT));
 
                     // mkdir("link1/"), test mkdir with a symlink path with trailing slash
                     // Some sys-call(e.g. mkdir() and rmdir()) should never dereference the final
                     // component, even if the path contains a trailing slash.
                     assert_eq!(
-                        nc::mkdir(format!("{}/", link1_name).as_str(), 0o755),
+                        unsafe { nc::mkdir(format!("{}/", link1_name).as_str(), 0o755) },
                         Err(nc::EEXIST)
                     );
-                    assert_eq!(nc::lstat(&dir3_name, &mut stat), Err(nc::ENOENT));
+                    assert_eq!(unsafe { nc::lstat(&dir3_name, &mut stat) }, Err(nc::ENOENT));
                 });
 
                 let _ = std::fs::remove_dir_all(base_dir);
@@ -236,26 +236,26 @@ mod tests {
 
                 let result = std::panic::catch_unwind(|| {
                     // create a temporary dir for test
-                    nc::mkdir(base_dir, 0o755).unwrap();
+                    unsafe { nc::mkdir(base_dir, 0o755) }.unwrap();
 
                     // init file and dir
-                    nc::mkdir(&dir_name, 0o755).unwrap();
+                    unsafe { nc::mkdir(&dir_name, 0o755) }.unwrap();
 
-                    nc::symlink(&link2_name, &link1_name).unwrap();
-                    nc::symlink(&dir_name, &link2_name).unwrap();
+                    unsafe { nc::symlink(&link2_name, &link1_name) }.unwrap();
+                    unsafe { nc::symlink(&dir_name, &link2_name) }.unwrap();
 
                     let mut stat = nc::stat_t::default();
 
                     // lstat("link1")
-                    nc::lstat(&link1_name, &mut stat).unwrap();
+                    unsafe { nc::lstat(&link1_name, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
 
                     // lstat("link2")
-                    nc::lstat(&link2_name, &mut stat).unwrap();
+                    unsafe { nc::lstat(&link2_name, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
 
                     // lstat("link1/") -> lstat("link2/") -> lstat("dir/")
-                    nc::lstat(format!("{}/", link1_name).as_str(), &mut stat).unwrap();
+                    unsafe { nc::lstat(format!("{}/", link1_name).as_str(), &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFDIR);
                 });
 

@@ -29,6 +29,8 @@ pub fn enter(tracee: &mut Tracee) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::fd::AsRawFd;
+
     use nix::{fcntl::OFlag, sys::stat::Mode};
 
     use crate::utils::tests::test_with_proot;
@@ -55,33 +57,41 @@ mod tests {
 
                     // test openat() with `O_CREAT` and `O_EXCL`
                     // this will create a regular file at `filepath`
-                    let file_fd = nc::openat(
-                        fd,
-                        filename,
-                        (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
-                        0o755,
-                    )
+                    let file_fd = unsafe {
+                        nc::openat(
+                            fd.as_raw_fd(),
+                            filename,
+                            (OFlag::O_RDONLY | OFlag::O_CREAT | OFlag::O_EXCL).bits(),
+                            0o755,
+                        )
+                    }
                     .unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::fstat(file_fd, &mut stat).unwrap();
+                    unsafe { nc::fstat(file_fd, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
-                    nc::close(file_fd).unwrap();
+                    unsafe { nc::close(file_fd) }.unwrap();
 
                     // test openat() with `OFlag::O_NOFOLLOW`;
-                    let file_fd =
-                        nc::openat(fd, linkname, (OFlag::O_NOFOLLOW | OFlag::O_PATH).bits(), 0)
-                            .unwrap();
+                    let file_fd = unsafe {
+                        nc::openat(
+                            fd.as_raw_fd(),
+                            linkname,
+                            (OFlag::O_NOFOLLOW | OFlag::O_PATH).bits(),
+                            0,
+                        )
+                    }
+                    .unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::fstat(file_fd, &mut stat).unwrap();
+                    unsafe { nc::fstat(file_fd, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
-                    nc::close(file_fd).unwrap();
+                    unsafe { nc::close(file_fd) }.unwrap();
 
                     // test openat() in normal case;
-                    let file_fd = nc::openat(fd, linkname, 0, 0).unwrap();
+                    let file_fd = unsafe { nc::openat(fd.as_raw_fd(), linkname, 0, 0) }.unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::fstat(file_fd, &mut stat).unwrap();
+                    unsafe { nc::fstat(file_fd, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
-                    nc::close(file_fd).unwrap();
+                    unsafe { nc::close(file_fd) }.unwrap();
                 });
                 std::fs::remove_file(linkpath).unwrap();
                 std::fs::remove_file(filepath).unwrap();

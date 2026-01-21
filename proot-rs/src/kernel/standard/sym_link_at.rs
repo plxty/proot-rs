@@ -23,7 +23,7 @@ pub fn enter(tracee: &mut Tracee) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
+    use std::{fs::File, os::fd::AsRawFd};
 
     use nix::{fcntl::OFlag, sys::stat::Mode};
 
@@ -48,21 +48,21 @@ mod tests {
                     // create two symbolic link file with symlinkat(), one points to the absolute
                     // path and one to the relative path.
                     File::create(filepath).unwrap();
-                    nc::symlinkat(filename, fd, linkpath_1).unwrap();
-                    nc::symlinkat(filepath, fd, linkpath_2).unwrap();
+                    unsafe { nc::symlinkat(filename, fd.as_raw_fd(), linkpath_1) }.unwrap();
+                    unsafe { nc::symlinkat(filepath, fd.as_raw_fd(), linkpath_2) }.unwrap();
 
                     // check correctness of symlinkat() by examining the resulting symbolic link
                     // file.
                     let mut stat = nc::stat_t::default();
                     // both `linkpath_1` and `linkpath_2` should be symlink
-                    nc::lstat(linkpath_1, &mut stat).unwrap();
+                    unsafe { nc::lstat(linkpath_1, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
-                    nc::lstat(linkpath_2, &mut stat).unwrap();
+                    unsafe { nc::lstat(linkpath_2, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
                     // both `linkpath_1` and `linkpath_2` should point to a regular file
-                    nc::stat(linkpath_1, &mut stat).unwrap();
+                    unsafe { nc::stat(linkpath_1, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
-                    nc::stat(linkpath_2, &mut stat).unwrap();
+                    unsafe { nc::stat(linkpath_2, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
                 });
                 std::fs::remove_file(filepath).unwrap();

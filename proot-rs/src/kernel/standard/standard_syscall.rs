@@ -48,11 +48,11 @@ mod tests {
                     // test stat()
 
                     let mut stat = nc::stat_t::default();
-                    nc::stat(linkpath, &mut stat).unwrap();
+                    unsafe { nc::stat(linkpath, &mut stat) }.unwrap();
                     // should be a regular file, since symbol link file will be dereference
                     // automatically.
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
-                    nc::stat(filepath, &mut stat).unwrap();
+                    unsafe { nc::stat(filepath, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFREG);
                 });
                 std::fs::remove_file(filepath).unwrap();

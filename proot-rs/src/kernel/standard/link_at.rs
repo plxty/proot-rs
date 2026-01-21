@@ -36,7 +36,7 @@ pub fn enter(tracee: &mut Tracee) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
+    use std::{fs::File, os::fd::AsRawFd};
 
     use nix::{fcntl::OFlag, sys::stat::Mode};
 
@@ -69,31 +69,51 @@ mod tests {
 
                     // This will create a new hard link to `oldlinkpath`, which means that we will
                     // create a new symbolic link.
-                    nc::linkat(fd, oldlinkname, fd, newlinkname, 0).unwrap();
+                    unsafe {
+                        nc::linkat(fd.as_raw_fd(), oldlinkname, fd.as_raw_fd(), newlinkname, 0)
+                    }
+                    .unwrap();
                     let mut stat = nc::stat_t::default();
-                    nc::lstat(newlinkpath, &mut stat).unwrap();
+                    unsafe { nc::lstat(newlinkpath, &mut stat) }.unwrap();
                     assert_eq!((stat.st_mode as nc::mode_t & nc::S_IFMT), nc::S_IFLNK);
                     let mut buf = [0_u8; nc::PATH_MAX as usize];
-                    let n_read = nc::readlink(newlinkpath, &mut buf).unwrap() as usize;
+                    let n_read = unsafe { nc::readlink(newlinkpath, &mut buf) }.unwrap() as usize;
                     assert_eq!(oldfilepath.as_bytes(), &buf[0..n_read]);
 
                     // With `AT_SYMLINK_FOLLOW`, linkat() will create a hard link to the
                     // `oldfilepath` file.
-                    nc::linkat(fd, oldlinkname, fd, newfilename, nc::AT_SYMLINK_FOLLOW).unwrap();
+                    unsafe {
+                        nc::linkat(
+                            fd.as_raw_fd(),
+                            oldlinkname,
+                            fd.as_raw_fd(),
+                            newfilename,
+                            nc::AT_SYMLINK_FOLLOW,
+                        )
+                    }
+                    .unwrap();
                     let mut new_filestat = nc::stat_t::default();
-                    nc::lstat(newfilepath, &mut new_filestat).unwrap();
+                    unsafe { nc::lstat(newfilepath, &mut new_filestat) }.unwrap();
                     assert_eq!(
                         (new_filestat.st_mode as nc::mode_t & nc::S_IFMT),
                         nc::S_IFREG
                     );
                     let mut old_filestat = nc::stat_t::default();
-                    nc::lstat(oldfilepath, &mut old_filestat).unwrap();
+                    unsafe { nc::lstat(oldfilepath, &mut old_filestat) }.unwrap();
                     assert_eq!(new_filestat.st_ino, old_filestat.st_ino);
 
                     // If the oldfilename end with a trailing slash, symlink
                     // follow will also happen.
                     assert_eq!(
-                        nc::linkat(fd, format!("{}/", oldlinkname).as_str(), fd, newfilename, 0),
+                        unsafe {
+                            nc::linkat(
+                                fd.as_raw_fd(),
+                                format!("{}/", oldlinkname).as_str(),
+                                fd.as_raw_fd(),
+                                newfilename,
+                                0,
+                            )
+                        },
                         Err(nc::ENOTDIR)
                     );
                 });

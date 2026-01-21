@@ -66,7 +66,7 @@ pub fn enter(tracee: &mut Tracee) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::fs::File;
+    use std::{fs::File, os::fd::AsRawFd};
 
     use nc::file_handle_t;
     use nix::{fcntl::OFlag, sys::stat::Mode};
@@ -107,16 +107,19 @@ mod tests {
                     let mut statx = nc::statx_t::default();
                     // Here we need to set flags to zero, since `AT_SYMLINK_FOLLOW` is not accepted
                     // in this syscall, which will cause an `EINVAL`
-                    nc::statx(fd, linkname, 0, nc::STATX_TYPE, &mut statx).unwrap();
+                    unsafe { nc::statx(fd.as_raw_fd(), linkname, 0, nc::STATX_TYPE, &mut statx) }
+                        .unwrap();
                     // should be a regular file, since AT_SYMLINK_NOFOLLOW is not set.
                     assert_eq!((statx.stx_mode as u32 & nc::S_IFMT), nc::S_IFREG);
-                    nc::statx(
-                        fd,
-                        linkname,
-                        nc::AT_SYMLINK_NOFOLLOW,
-                        nc::STATX_TYPE,
-                        &mut statx,
-                    )
+                    unsafe {
+                        nc::statx(
+                            fd.as_raw_fd(),
+                            linkname,
+                            nc::AT_SYMLINK_NOFOLLOW,
+                            nc::STATX_TYPE,
+                            &mut statx,
+                        )
+                    }
                     .unwrap();
                     // should be a symlink, since AT_SYMLINK_NOFOLLOW is set.
                     assert_eq!((statx.stx_mode as u32 & nc::S_IFMT), nc::S_IFLNK);
@@ -125,10 +128,18 @@ mod tests {
                     #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
                     {
                         let mut stat = nc::stat_t::default();
-                        nc::newfstatat(fd, linkname, &mut stat, 0).unwrap();
+                        unsafe { nc::newfstatat(fd.as_raw_fd(), linkname, &mut stat, 0) }.unwrap();
                         // should be a regular file, since AT_SYMLINK_NOFOLLOW is not set.
                         assert_eq!((stat.st_mode & nc::S_IFMT), nc::S_IFREG);
-                        nc::newfstatat(fd, linkname, &mut stat, nc::AT_SYMLINK_NOFOLLOW).unwrap();
+                        unsafe {
+                            nc::newfstatat(
+                                fd.as_raw_fd(),
+                                linkname,
+                                &mut stat,
+                                nc::AT_SYMLINK_NOFOLLOW,
+                            )
+                        }
+                        .unwrap();
                         // should be a symlink, since AT_SYMLINK_NOFOLLOW is set.
                         assert_eq!((stat.st_mode & nc::S_IFMT), nc::S_IFLNK);
                     }
@@ -146,7 +157,7 @@ mod tests {
                             tv_nsec: 0,
                         },
                     ];
-                    nc::utimensat(fd, linkname, &time, 0).unwrap();
+                    unsafe { nc::utimensat(fd.as_raw_fd(), linkname, &time, 0) }.unwrap();
                     // check access time and modification time for the file
                     let file_stat = nix::sys::stat::lstat(filepath).unwrap();
                     assert_eq!(file_stat.st_atime, time[0].tv_sec as _);
@@ -165,7 +176,10 @@ mod tests {
                             tv_nsec: 0,
                         },
                     ];
-                    nc::utimensat(fd, linkname, &time, nc::AT_SYMLINK_NOFOLLOW).unwrap();
+                    unsafe {
+                        nc::utimensat(fd.as_raw_fd(), linkname, &time, nc::AT_SYMLINK_NOFOLLOW)
+                    }
+                    .unwrap();
                     // check access time and modification time for the link
                     let link_stat = nix::sys::stat::lstat(linkpath).unwrap();
                     assert_eq!(link_stat.st_atime, time[0].tv_sec as _);
@@ -184,26 +198,40 @@ mod tests {
                     // let mut file_handle = nc::file_handle_t::default();
                     let mut mount_id = 0;
                     file_handle.handle_bytes = MAX_HANDLE_SZ as _; // reset handle_bytes
-                    nc::name_to_handle_at(
-                        fd,
-                        linkname,
-                        file_handle,
-                        &mut mount_id,
-                        nc::AT_SYMLINK_FOLLOW,
-                    )
+                    unsafe {
+                        nc::name_to_handle_at(
+                            fd.as_raw_fd(),
+                            linkname,
+                            file_handle,
+                            &mut mount_id,
+                            nc::AT_SYMLINK_FOLLOW,
+                        )
+                    }
                     .unwrap();
                     file_handle.handle_bytes = MAX_HANDLE_SZ as _; // reset handle_bytes
-                    nc::name_to_handle_at(fd, linkname, file_handle, &mut mount_id, 0).unwrap();
+                    unsafe {
+                        nc::name_to_handle_at(
+                            fd.as_raw_fd(),
+                            linkname,
+                            file_handle,
+                            &mut mount_id,
+                            0,
+                        )
+                    }
+                    .unwrap();
 
                     // test fchownat()
-                    nc::fchownat(fd, linkname, -1i64 as _, -1i64 as _, 0).unwrap();
-                    nc::fchownat(
-                        fd,
-                        linkname,
-                        -1i64 as _,
-                        -1i64 as _,
-                        nc::AT_SYMLINK_NOFOLLOW,
-                    )
+                    unsafe { nc::fchownat(fd.as_raw_fd(), linkname, -1i64 as _, -1i64 as _, 0) }
+                        .unwrap();
+                    unsafe {
+                        nc::fchownat(
+                            fd.as_raw_fd(),
+                            linkname,
+                            -1i64 as _,
+                            -1i64 as _,
+                            nc::AT_SYMLINK_NOFOLLOW,
+                        )
+                    }
                     .unwrap();
                 });
                 std::fs::remove_file(filepath).unwrap();

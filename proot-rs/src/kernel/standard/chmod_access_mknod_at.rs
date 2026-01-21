@@ -31,7 +31,7 @@ pub fn enter(tracee: &mut Tracee) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::prelude::PermissionsExt;
+    use std::os::{fd::AsRawFd, unix::prelude::PermissionsExt};
 
     use nix::{fcntl::OFlag, sys::stat::Mode};
 
@@ -57,18 +57,20 @@ mod tests {
                     // test mknodat()
 
                     // call mknodat(fd, filename) to create a regular file.
-                    nc::mknodat(
-                        fd,
-                        filename,
-                        nc::S_IFREG
-                            | nc::S_IRUSR
-                            | nc::S_IWUSR
-                            | nc::S_IRGRP
-                            | nc::S_IWGRP
-                            | nc::S_IROTH
-                            | nc::S_IWOTH,
-                        0,
-                    )
+                    unsafe {
+                        nc::mknodat(
+                            fd.as_raw_fd(),
+                            filename,
+                            nc::S_IFREG
+                                | nc::S_IRUSR
+                                | nc::S_IWUSR
+                                | nc::S_IRGRP
+                                | nc::S_IWGRP
+                                | nc::S_IROTH
+                                | nc::S_IWOTH,
+                            0,
+                        )
+                    }
                     .unwrap();
                     // check file was created.
                     let metadata = std::fs::metadata(filepath).unwrap();
@@ -78,7 +80,7 @@ mod tests {
 
                     // call fchmodat() on this file to set mode to "700", and check mode is changed
                     // successfully.
-                    nc::fchmodat(fd, filename, 0o700).unwrap();
+                    unsafe { nc::fchmodat(fd.as_raw_fd(), filename, 0o700) }.unwrap();
                     let metadata = std::fs::metadata(filepath).unwrap();
                     let mode = metadata.permissions().mode();
                     assert_eq!(
@@ -86,16 +88,29 @@ mod tests {
                         Mode::S_IRUSR | Mode::S_IWUSR | Mode::S_IXUSR
                     );
                     // since mode is "700", we have full access to this file
-                    nc::faccessat(fd, filename, nc::F_OK | nc::R_OK | nc::W_OK | nc::X_OK).unwrap();
+                    unsafe {
+                        nc::faccessat(
+                            fd.as_raw_fd(),
+                            filename,
+                            nc::F_OK | nc::R_OK | nc::W_OK | nc::X_OK,
+                        )
+                    }
+                    .unwrap();
 
                     // call fchmodat() on this file to set mode to "000", and check it later
-                    nc::fchmodat(fd, filename, 0o000).unwrap();
+                    unsafe { nc::fchmodat(fd.as_raw_fd(), filename, 0o000) }.unwrap();
                     let metadata = std::fs::metadata(filepath).unwrap();
                     let mode = metadata.permissions().mode();
                     assert_eq!(Mode::from_bits_truncate(mode), Mode::empty());
                     // mode is changed to "000", so we should have no access to this file
-                    nc::faccessat(fd, filename, nc::F_OK | nc::R_OK | nc::W_OK | nc::X_OK)
-                        .unwrap_err();
+                    unsafe {
+                        nc::faccessat(
+                            fd.as_raw_fd(),
+                            filename,
+                            nc::F_OK | nc::R_OK | nc::W_OK | nc::X_OK,
+                        )
+                    }
+                    .unwrap_err();
 
                     // test futimesat()
 
@@ -110,7 +125,7 @@ mod tests {
                             tv_usec: 0,
                         },
                     ];
-                    nc::futimesat(fd, filename, &time).unwrap();
+                    unsafe { nc::futimesat(fd.as_raw_fd(), filename, &time) }.unwrap();
                     // check access time and modification time
                     let file_stat = nix::sys::stat::stat(filepath).unwrap();
                     assert_eq!(file_stat.st_atime, time[0].tv_sec as _);
