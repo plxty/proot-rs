@@ -61,13 +61,13 @@ impl FileSystem {
         P2: AsRef<Path>,
     {
         let canonical_host_path = std::fs::canonicalize(host_path)?;
-        // TODO: allow path not existed when glue is implemented
+        // Inaccessible path are allowed (including which not existed) currently
+        // as a glue alternative.
         let canonical_guest_path = self.canonicalize(guest_path.as_ref(), true)?;
         // We need to ensure that the target path for the binding exists.
         // Skip the check for "/" because "/" always exists.
         if canonical_guest_path != Path::new("/") {
-            self.substitute(&canonical_guest_path, Side::Guest)?
-                .metadata()?; // call .metadata() to check if the path exist
+            self.substitute(&canonical_guest_path, Side::Guest)?;
         }
 
         // Add a binding at the beginning of the list, so that we get the most recent
@@ -268,12 +268,14 @@ mod tests {
 
         let mut fs = FileSystem::new();
 
-        assert!(fs
-            .get_first_appropriate_binding(&PathBuf::from("/home/user"), Guest)
-            .is_none()); // no bindings
-        assert!(fs
-            .get_first_appropriate_binding(&PathBuf::from("/home/user"), Host)
-            .is_none()); // no bindings
+        assert!(
+            fs.get_first_appropriate_binding(&PathBuf::from("/home/user"), Guest)
+                .is_none()
+        ); // no bindings
+        assert!(
+            fs.get_first_appropriate_binding(&PathBuf::from("/home/user"), Host)
+                .is_none()
+        ); // no bindings
 
         // testing root binding
         fs.set_root(get_test_rootfs_path()).unwrap();
@@ -285,9 +287,10 @@ mod tests {
             &PathBuf::from("/")
         ); // it's "/home/user/bin" from the point of view of the host
 
-        assert!(fs
-            .get_first_appropriate_binding(&Path::new("/etc"), Host)
-            .is_none()); // "/etc" is outside of the guest fs, so no corresponding binding found
+        assert!(
+            fs.get_first_appropriate_binding(&Path::new("/etc"), Host)
+                .is_none()
+        ); // "/etc" is outside of the guest fs, so no corresponding binding found
 
         // testing binding outside of guest fs;
         // here, "/etc" on the host corresponds to "/tmp" in the sandbox.
@@ -307,9 +310,10 @@ mod tests {
             &PathBuf::from("/tmp")
         ); // same on the other side
 
-        assert!(fs
-            .get_first_appropriate_binding(&Path::new("/bin"), Host)
-            .is_none()); // should correspond to no binding
+        assert!(
+            fs.get_first_appropriate_binding(&Path::new("/bin"), Host)
+                .is_none()
+        ); // should correspond to no binding
 
         // testing symmetric binding
         fs.add_binding("/bin", "/bin").unwrap();
@@ -379,9 +383,9 @@ mod tests {
 
         let root_path = get_test_rootfs_path();
         let mut fs = FileSystem::with_root(root_path)?;
-        // we currently cannot bind to a non-existing guest path.
-        fs.add_binding("/etc", "/bin/non_existing_path")
-            .unwrap_err();
+        // Bind to a non-existing guest path are temprorarily allowed, as glue hasn't
+        // implemented yet:
+        fs.add_binding("/etc", "/bin/non_existing_path").unwrap();
         fs.add_binding("/non_existing_path", "/bin").unwrap_err();
         fs.add_binding("/etc", "/usr")?;
         fs.add_binding("/etc/../tmp/", "/home/../home")?;

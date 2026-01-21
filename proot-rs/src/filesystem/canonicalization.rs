@@ -1,9 +1,12 @@
-use std::path::{Component, Path, PathBuf};
+use std::{
+    io::ErrorKind,
+    path::{Component, Path, PathBuf},
+};
 
 use crate::errors::*;
+use crate::filesystem::FileSystem;
 use crate::filesystem::binding::Side;
 use crate::filesystem::substitution::Substitutor;
-use crate::filesystem::FileSystem;
 
 use super::ext::{PathBufExt, PathExt};
 
@@ -20,13 +23,17 @@ impl Canonicalizer for FileSystem {
     /// The result is a canonicalized path on the `Guest` side.
     ///
     /// The final component can be a path that does not exist. The final
-    /// component is only deferenced if `deref_final` is true and path is
+    /// component is only dereferenced if `deref_final` is true and path is
     /// existing.
+    ///
+    /// For intermediate directories, if they're inaccessible, process will stop
+    /// and the rest components will be returned.
+    /// TODO: After glue has been implemented, rethink of here.
     ///
     /// # Paramters
     ///
     /// - guest_path: path to be canonicalized, must be absolute path
-    /// - deref_final: weather or not to dereference final user_path
+    /// - deref_final: whether or not to dereference final user_path
     ///
     /// # Return
     ///
@@ -101,7 +108,9 @@ impl Canonicalizer for FileSystem {
                         // `metadata` is error if we cannot access this file or file is not exist.
                         // However, we can accept this path because some syscall (e.g. mkdir, mknod)
                         // allow final component not exist.
-                        if metadata.is_err() {
+                        if let Err(ref e) = metadata
+                            && e.kind() == ErrorKind::NotFound
+                        {
                             continue;
                         }
 
@@ -110,6 +119,11 @@ impl Canonicalizer for FileSystem {
                         if !deref_final {
                             continue;
                         }
+                    } else if metadata.is_err() {
+                        // MUST not be the last_component, TODO: Faster way?
+                        guest_path_new.push(next_comp.unwrap());
+                        it.for_each(|c| guest_path_new.push(c));
+                        return Ok(guest_path_new);
                     }
 
                     let file_type = metadata?.file_type();
@@ -173,8 +187,8 @@ mod tests {
     use nix::sys::stat::Mode;
 
     use super::*;
-    use crate::filesystem::ext::PathExt;
     use crate::filesystem::FileSystem;
+    use crate::filesystem::ext::PathExt;
     use crate::utils::tests::get_test_rootfs_path;
 
     #[test]
@@ -198,14 +212,15 @@ mod tests {
             fs.canonicalize("/etc/non_existing_path", false),
             Ok("/etc/non_existing_path".into())
         );
-        // Any non-final component in path should exist
+        // Any non-final component in path should be accepted as well:
+        // TODO: Glue?
         assert_eq!(
             fs.canonicalize("/etc/non_existing_path/non_existing_path", true),
-            Err(Error::errno(Errno::ENOENT))
+            Ok("/etc/non_existing_path/non_existing_path".into())
         );
         assert_eq!(
             fs.canonicalize("/etc/non_existing_path/non_existing_path", false),
-            Err(Error::errno(Errno::ENOENT))
+            Ok("/etc/non_existing_path/non_existing_path".into())
         );
         // Any non-final component in path should be directory
         assert_eq!(
